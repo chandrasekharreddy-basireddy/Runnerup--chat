@@ -1,0 +1,60 @@
+name: ci
+
+on:
+  push: { branches: [main] }
+  pull_request:
+
+jobs:
+  no-ai-guard:
+    # Runs first and blocks everything else. The product has no AI surface by design;
+    # this fails the build if a dependency or model endpoint ever sneaks in.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./scripts/no-ai-check.sh
+
+  backend:
+    needs: no-ai-guard
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: chat_test
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-retries 10
+        ports: ["5432:5432"]
+      redis:
+        image: redis:7
+        ports: ["6379:6379"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -r backend/requirements.txt
+      - name: Apply schema
+        run: psql "$DB" -f backend/migrations/0001_init.sql
+        env: { DB: "postgresql://postgres:ci@localhost:5432/chat_test", PGPASSWORD: ci }
+      - run: pytest backend/tests -q
+        env:
+          DATABASE_URL: postgresql://postgres:ci@localhost:5432/chat_test
+          REDIS_URL: redis://localhost:6379/0
+
+  secret-scan:
+    needs: no-ai-guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: gitleaks/gitleaks-action@v2
+        env: { GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+
+  frontend:
+    needs: no-ai-guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - run: echo "frontend build wired up in the next phase"

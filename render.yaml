@@ -1,0 +1,60 @@
+# Render blueprint. Postgres lives in Supabase; Render runs the stateful parts that
+# Vercel cannot host: the WebSocket API and the background worker.
+services:
+  - type: web
+    name: chat-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    region: singapore              # same continent as the ap-south-1 Supabase project
+    plan: starter                  # free instances sleep and drop WebSockets; do not use
+    healthCheckPath: /api/v1/health
+    autoDeploy: true
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DATABASE_URL           # Supabase pooler URI, session mode, sslmode=require
+        sync: false
+      - key: REDIS_URL
+        fromService: { type: keyvalue, name: chat-redis, property: connectionString }
+      - key: JWT_SIGNING_KEY
+        generateValue: true
+      - key: OTP_PEPPER
+        generateValue: true
+      - key: COOKIE_SIGNING_KEY
+        generateValue: true
+      - key: S3_ENDPOINT
+        sync: false                # https://<ref>.storage.supabase.co/storage/v1/s3
+      - key: S3_BUCKET
+        value: chat-media
+      - key: S3_ACCESS_KEY
+        sync: false
+      - key: S3_SECRET_KEY
+        sync: false
+      - key: SMS_PROVIDER
+        value: twilio
+      - key: SMS_API_KEY
+        sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false                # exact https origin of the Vercel deployment
+      - key: PUBLIC_WEB_ORIGIN
+        sync: false
+
+  - type: worker
+    name: chat-worker
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    region: singapore
+    plan: starter
+    dockerCommand: python -m app.worker
+    autoDeploy: true
+    envVars:
+      - fromGroup: chat-shared
+
+  - type: keyvalue
+    name: chat-redis
+    region: singapore
+    plan: starter                  # presence, pub/sub, rate limits, job queue
+    maxmemoryPolicy: noeviction
+    ipAllowList: []                # private network only, no public endpoint

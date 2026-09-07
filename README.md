@@ -61,9 +61,27 @@ encrypted.** See `docs/security.md`.
 
 ## Run it
 
-    cp .env.example .env      # then fill in real secrets
-    docker compose up --build
-    docker compose exec api python -m app.cli seed-dev
+    ./scripts/bootstrap.sh
 
-API on https://localhost/api/v1, web on https://localhost, MinIO console on :9001.
-In development the SMS provider is a console stub that prints the OTP to the API log.
+That generates a `.env` with cryptographically random secrets, renders the role
+migration with the real database password, and brings the stack up. It is idempotent —
+an existing `.env` is left alone so re-running never rotates keys out from under a
+running database.
+
+  - Web: http://localhost:3000
+  - API: http://localhost/api/v1/health
+  - MinIO console: http://localhost:9001
+
+To sign in, enter any phone number and read the six-digit code from the API log:
+
+    docker compose logs -f api | grep dev-sms
+
+The console SMS provider refuses to start when `ENVIRONMENT=production`, so it cannot
+put a live code into a real log pipeline.
+
+Postgres, Redis and MinIO publish no host ports — they are reachable only from inside
+the compose network. Scale the API with `docker compose up --scale api=3`; it is
+stateless and all fan-out goes through Redis pub/sub.
+
+**Real SMS delivery is not configured.** Until `SMS_PROVIDER=twilio` and credentials are
+set, this cannot serve real users — anyone who can read the logs can sign in as anyone.

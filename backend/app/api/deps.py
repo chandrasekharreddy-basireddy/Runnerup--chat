@@ -83,7 +83,7 @@ async def require_csrf(request: Request) -> None:
     ambient authority in the system, so it gets both defences.
     """
     origin = request.headers.get("origin") or request.headers.get("referer") or ""
-    if not any(origin.startswith(o) for o in settings.allowed_origins):
+    if not any(origin.startswith(o) for o in settings.origins):
         raise PermissionDenied("bad_origin")
 
     header_token = request.headers.get("x-csrf-token")

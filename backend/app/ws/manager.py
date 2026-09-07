@@ -79,6 +79,13 @@ class ConnectionManager:
                     payload = json.loads(message["data"])
                 except (TypeError, ValueError):
                     continue
+                # Session revocation must reach sockets on every replica, not just the
+                # one that handled the logout request. Intercepted before normal fan-out
+                # because it closes connections rather than delivering to them.
+                if payload.get("type") == "session.revoked":
+                    await self._close_revoked(payload)
+                    continue
+
                 for connection in list(self._by_channel.get(channel, ())):
                     # Skip the originating connection: its optimistic UI already shows
                     # this message, and echoing it back causes a visible flicker.
@@ -91,6 +98,26 @@ class ConnectionManager:
             except Exception as exc:
                 log.error("pubsub_relay_error", error=type(exc).__name__)
                 await asyncio.sleep(0.5)
+
+    async def _close_revoked(self, payload: dict) -> None:
+        """Drop live sockets whose session was just revoked.
+
+        Without this a socket authenticated an hour ago outlives the logout that was
+        supposed to kill it — the connection was authorized once at handshake and never
+        re-checks. Closing here is what makes "log out my other devices" actually mean it.
+        """
+        revoked = set(payload.get("session_ids", []))
+        user_id = payload.get("user_id")
+        if not revoked or not user_id:
+            return
+        for connection in list(self._by_user.get(user_id, ())):
+            if connection.session_id in revoked:
+                await connection.send({"type": "session.revoked",
+                                       "reason": payload.get("reason", "revoked")})
+                try:
+                    await connection.socket.close(code=4001)
+                except Exception:
+                    pass
 
     async def register(self, connection: Connection) -> bool:
         async with self._lock:

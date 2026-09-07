@@ -4,7 +4,7 @@ silently degrading security."""
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field, PostgresDsn, field_validator
+from pydantic import PostgresDsn, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -47,15 +47,15 @@ class Settings(BaseSettings):
     sms_sender_id: str = ""
 
     # --- web --------------------------------------------------------------------
-    allowed_origins: list[str] = Field(default_factory=list)
+    # Held as a raw string rather than list[str]: pydantic-settings JSON-decodes complex
+    # env values before any validator runs, so a plain comma-separated ALLOWED_ORIGINS
+    # would fail at import with a parse error rather than reaching a validator.
+    allowed_origins: str = ""
     public_web_origin: str = "https://localhost"
 
-    @field_validator("allowed_origins", mode="before")
-    @classmethod
-    def _split_origins(cls, v):
-        if isinstance(v, str):
-            return [o.strip() for o in v.split(",") if o.strip()]
-        return v
+    @property
+    def origins(self) -> list[str]:
+        return [o.strip() for o in self.allowed_origins.split(",") if o.strip()]
 
     @field_validator("jwt_signing_key", "otp_pepper", "cookie_signing_key")
     @classmethod

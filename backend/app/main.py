@@ -14,7 +14,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api.v1 import auth
+from app.api.v1 import auth, conversations
 from app.core.config import get_settings
 from app.core.logging import configure_logging, get_logger, request_id_ctx
 from app.core.redis import close_redis, get_redis
@@ -49,7 +49,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.allowed_origins,   # exact origins, never "*"
+    allow_origins=settings.origins,           # exact origins, never "*"
     allow_credentials=True,                   # required for the refresh cookie
     allow_methods=["GET", "POST", "PATCH", "DELETE"],
     allow_headers=["Authorization", "Content-Type", "X-CSRF-Token"],
@@ -91,4 +91,5 @@ async def health():
 
 
 app.include_router(auth.router, prefix="/api/v1")
+app.include_router(conversations.router, prefix="/api/v1")
 app.include_router(ws_router.router)

@@ -27,7 +27,7 @@ async def record_audit(
     await db.execute(insert(AuditLog).values(
         actor_id=actor_id, actor_role=actor_role, action=action,
         target_type=target_type, target_id=target_id,
-        request_id=request_id_ctx.get(), ip=ip, metadata=metadata or {},
+        request_id=request_id_ctx.get(), ip=ip, audit_metadata=metadata or {},
     ))
     log.info("audit", action=action, target_type=target_type, target_id=target_id)
 
@@ -43,4 +43,4 @@ async def record_security(
         device_id=device_id, ip=ip, request_id=request_id_ctx.get(),
         detail=detail or {},
     ))
-    log.warning("security_event", event=event, severity=severity)
+    log.warning("security_event", security_event=event, severity=severity)

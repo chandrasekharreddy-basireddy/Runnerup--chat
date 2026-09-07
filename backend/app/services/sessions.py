@@ -172,10 +172,14 @@ async def revoke_family(db: AsyncSession, family_id: uuid.UUID, *, reason: str) 
         update(UserSession)
         .where(UserSession.family_id == family_id, UserSession.revoked_at.is_(None))
         .values(revoked_at=datetime.now(UTC), revoked_reason=reason)
-        .returning(UserSession.id)
+        .returning(UserSession.id, UserSession.user_id)
     )
-    for (session_id,) in rows:
+    revoked = list(rows)
+    for session_id, _ in revoked:
         await mark_revoked_in_cache(str(session_id))
+    if revoked:
+        await _announce_revocation(str(revoked[0][1]),
+                                   [str(s) for s, _ in revoked], reason)
 
 
 async def revoke_session(db: AsyncSession, *, session_id: uuid.UUID,
@@ -203,7 +207,19 @@ async def revoke_all_for_user(db: AsyncSession, *, user_id: uuid.UUID,
     for (session_id,) in rows:
         await mark_revoked_in_cache(str(session_id))
     await db.commit()
+    if rows:
+        await _announce_revocation(str(user_id), [str(s) for (s,) in rows], reason)
     return len(rows)
+
+
+async def _announce_revocation(user_id: str, session_ids: list[str], reason: str) -> None:
+    """Broadcast so every replica can drop the matching sockets. Revoking the session row
+    stops future requests; this stops the connection that is already open."""
+    import json
+    await get_redis().publish(user_channel(user_id), json.dumps({
+        "type": "session.revoked", "user_id": user_id,
+        "session_ids": session_ids, "reason": reason,
+    }))
 
 
 async def mark_revoked_in_cache(session_id: str) -> None:

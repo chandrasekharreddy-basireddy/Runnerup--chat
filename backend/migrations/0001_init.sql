@@ -6,6 +6,11 @@
 CREATE EXTENSION IF NOT EXISTS pgcrypto;   -- gen_random_uuid, digest
 CREATE EXTENSION IF NOT EXISTS citext;
 CREATE EXTENSION IF NOT EXISTS pg_trgm;    -- filename / display-name fuzzy lookup
+-- Lets a GIN index mix a scalar column with a tsvector. Without it the composite
+-- (conversation_id, search_tsv) index below cannot be built, and search would have to
+-- scan the tsvector index globally and filter afterwards — which is exactly the
+-- unauthorized-reach problem the composite index exists to prevent.
+CREATE EXTENSION IF NOT EXISTS btree_gin;
 
 -- ---------------------------------------------------------------- enumerations
 CREATE TYPE system_role      AS ENUM ('USER','MODERATOR','ADMIN','SUPER_ADMIN');

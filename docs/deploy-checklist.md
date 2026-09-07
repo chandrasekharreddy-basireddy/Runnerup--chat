@@ -3,7 +3,34 @@
 The code is done and verified. What remains is provisioning, and every step below needs
 either your approval in the Claude app or a credential I should not be handling.
 
-## 1. Supabase (database) — $0/month
+## 1. Supabase (database) — the free tier is full
+
+Your org allows two active free projects and both slots are used:
+
+| Project | Status | Created |
+|---|---|---|
+| survivalschool-prod | ACTIVE | 14 Aug |
+| rockstar-organics | ACTIVE | 26 Aug |
+| Quiz-web | PAUSED | 24 Jun |
+
+Restoring `Quiz-web` fails for the same reason — a restore counts toward the limit.
+Render is not an alternative: it returned `402 Payment information is required`, so no
+plan there works until a card is on file.
+
+That leaves three options, and each one costs you something different:
+
+1. **Pause `rockstar-organics`** — frees a slot immediately. Its site goes offline.
+2. **Pause `survivalschool-prod`** — same, but this is production. Not recommended.
+3. **Co-tenant inside an existing project** — `0003_isolated_schema.sql` installs the
+   whole platform into a dedicated `chat` schema with its own least-privilege role and a
+   pinned `search_path`, so neither application can see or damage the other's tables.
+   Nothing goes offline. The cost is a shared database: shared connection limits, CPU,
+   disk, backups, and a shared blast radius on restore.
+
+Option 3 is what I would pick to get moving without taking anything down, with a move to
+a dedicated project as soon as one is free.
+
+## 1b. Once a project or schema exists — $0/month
 
 I attempted this and the call returned "No approval received": creating a project is a
 write action that needs your tap. Once approved:

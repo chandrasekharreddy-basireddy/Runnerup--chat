@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: light; }
+
+html, body { height: 100%; }
+body {
+  background: theme('colors.surface.sunk');
+  color: theme('colors.ink.DEFAULT');
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Visible focus for keyboard users. Removing outlines without a replacement makes the
+   app unusable without a mouse. */
+:focus-visible {
+  outline: 2px solid theme('colors.accent.DEFAULT');
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}

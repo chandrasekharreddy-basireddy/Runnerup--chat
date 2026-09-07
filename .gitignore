@@ -7,3 +7,6 @@ node_modules/
 .next/
 .pytest_cache/
 data/
+.next/
+next-env.d.ts
+tsconfig.tsbuildinfo

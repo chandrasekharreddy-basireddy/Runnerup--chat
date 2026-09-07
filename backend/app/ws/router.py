@@ -15,18 +15,16 @@ import uuid
 
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import Principal, current_principal
 from app.core.config import get_settings
-from app.core.errors import NotVisible
 from app.core.logging import get_logger
 from app.core import ratelimit
 from app.core.redis import (
     conversation_channel, get_redis, presence_key, typing_key, ws_ticket_key,
 )
 from app.core.security import random_token
-from app.db.models import ConversationMember, User
+from app.db.models import User
 from app.db.session import SessionLocal
 from app.services.authz import Permission, resolve_access
 from app.services.sessions import is_session_revoked
@@ -85,7 +83,6 @@ async def websocket_endpoint(socket: WebSocket, ticket: str = ""):
     redis = get_redis()
     await redis.setex(presence_key(connection.user_id), PRESENCE_TTL_SECONDS, "online")
 
-    last_seen = time.monotonic()
     heartbeat = asyncio.create_task(_heartbeat(connection))
 
     try:
@@ -116,7 +113,6 @@ async def websocket_endpoint(socket: WebSocket, ticket: str = ""):
                 await connection.send({"type": "error", "code": "malformed"})
                 continue
 
-            last_seen = time.monotonic()
             await _handle_event(connection, event)
 
     except WebSocketDisconnect:

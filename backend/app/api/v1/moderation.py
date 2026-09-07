@@ -7,11 +7,11 @@ reporting unsafe for the person doing it.
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,7 +19,7 @@ from app.api.deps import Principal, current_principal
 from app.core.errors import NotVisible, PermissionDenied, ValidationFailed
 from app.core import ratelimit
 from app.db.models import (
-    BlockedUser, ConversationMember, Message, Report, User,
+    BlockedUser, Report, User,
 )
 from app.db.session import get_db
 from app.services.audit import record_audit

@@ -1,6 +1,5 @@
 from pydantic import BaseModel, Field, field_validator
 
-from app.core.security import InvalidPhoneNumber, normalize_phone
 
 
 class OtpRequestIn(BaseModel):

@@ -7,17 +7,16 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import Principal, client_ip, current_principal
-from app.core.errors import NotVisible, ValidationFailed
-from app.db.models import User
+from app.api.deps import Principal, current_principal
+from app.core.errors import ValidationFailed
 from app.db.session import get_db
 from app.services import conversations as conv_service
 from app.services import messages as message_service
-from app.services.authz import Permission, resolve_access, resolve_message_access
+from app.services.authz import resolve_access, resolve_message_access
 
 router = APIRouter(tags=["conversations"])
 

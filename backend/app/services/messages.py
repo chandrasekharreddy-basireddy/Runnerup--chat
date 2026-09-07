@@ -20,7 +20,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
-from sqlalchemy import func, select, text, update
+from sqlalchemy import func, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -28,11 +28,11 @@ from app.core.errors import NotVisible, PermissionDenied, ValidationFailed
 from app.core.logging import get_logger
 from app.core import ratelimit
 from app.db.models import (
-    Attachment, Conversation, ConversationEvent, ConversationMember, Message,
-    MessageEdit, MessageMention, MessageReaction, MessageReceipt, User,
+    Attachment, ConversationEvent, ConversationMember, Message,
+    MessageEdit, MessageMention, MessageReaction, User,
 )
 from app.services.authz import (
-    Access, Permission, can_delete_message, can_modify_message, resolve_access,
+    Access, Permission, can_delete_message, can_modify_message,
 )
 from app.ws.manager import publish_to_conversation
 

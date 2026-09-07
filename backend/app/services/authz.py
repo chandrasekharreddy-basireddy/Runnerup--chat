@@ -22,7 +22,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AccountUnavailable, NotVisible, PermissionDenied
-from app.db.models import BlockedUser, Conversation, ConversationMember, Message, User
+from app.db.models import (
+    BlockedUser, Conversation, ConversationMember, DirectConversationKey, Message, User,
+)
 
 
 class Permission(StrEnum):
@@ -172,8 +174,37 @@ async def resolve_access(
     if conversation.is_archived:
         granted -= {Permission.SEND_MESSAGE, Permission.EDIT_OWN_MESSAGE}
 
+    # Blocking has to be enforced here, not only when a chat is created. Checking it
+    # only at creation left an existing conversation fully usable after a block, which
+    # is precisely the harassment path blocking exists to close. Reads are left intact
+    # so neither party loses their history; writes are what stop.
+    if conversation.kind == "DIRECT" and granted & {Permission.SEND_MESSAGE}:
+        counterpart = await _direct_counterpart(db, conversation.id, user.id)
+        if counterpart is not None:
+            blocked_them, blocked_by_them = await blocking_state(db, user.id, counterpart)
+            if blocked_them or blocked_by_them:
+                granted -= {
+                    Permission.SEND_MESSAGE, Permission.EDIT_OWN_MESSAGE,
+                    Permission.PIN_MESSAGE,
+                }
+
     granted |= _SYSTEM_GRANTS.get(user.system_role, set())
     return Access(user, conversation, membership, frozenset(granted))
+
+
+async def _direct_counterpart(
+    db: AsyncSession, conversation_id: uuid.UUID, user_id: uuid.UUID
+) -> uuid.UUID | None:
+    """The other participant in a direct chat, via the ordered-pair key."""
+    row = await db.execute(
+        select(DirectConversationKey.user_lo, DirectConversationKey.user_hi)
+        .where(DirectConversationKey.conversation_id == conversation_id)
+    )
+    pair = row.first()
+    if pair is None:
+        return None
+    lo, hi = pair
+    return hi if lo == user_id else lo
 
 
 async def require_permission(

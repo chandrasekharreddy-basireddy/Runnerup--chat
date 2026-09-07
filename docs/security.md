@@ -82,3 +82,31 @@ Blocking and reporting:
 - suspension revokes every session immediately rather than waiting for token expiry
 - a moderator cannot suspend a peer or a superior, so one compromised admin account
   cannot disable the others
+
+## Blocking bypass — found and fixed
+
+**The bug.** Blocking was enforced only when a direct conversation was created. Once a
+conversation existed, a block did nothing: the blocked user could keep sending into it,
+and the messages appeared in the blocker's client. Reproduced end to end — Bob blocked
+Alice, Alice posted "HARASSMENT AFTER BLOCK" with HTTP 200, and Bob's message list
+returned it.
+
+That is the exact failure blocking exists to prevent. Checking a condition only at
+creation time is a recurring shape of authorization bug: the check passes once and the
+resource then outlives it.
+
+**The fix.** Block state is now resolved inside `resolve_access`, the single chokepoint
+every read and write already passes through, rather than at the one call site that
+happened to think of it. For a direct conversation the counterpart is resolved through
+the ordered-pair key and `SEND_MESSAGE`, `EDIT_OWN_MESSAGE` and `PIN_MESSAGE` are
+withdrawn if either party has blocked the other.
+
+**Verified after the fix:**
+
+- blocked sender into an existing chat: 403
+- the blocker sending to the blocked user: 403 as well, since a block is not a one-way
+  mute that leaves the blocker able to keep talking
+- both parties can still read their existing history — a block removes the ability to
+  write, not the record of what was said
+- after unblocking, sending succeeds again
+- a 1:1 block does **not** silence either party in groups they both belong to

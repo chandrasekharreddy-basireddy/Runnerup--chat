@@ -11,11 +11,11 @@ import datetime as dt
 import uuid
 
 from sqlalchemy import (
-    BigInteger, Boolean, CheckConstraint, Computed, DateTime, Enum, ForeignKey,
-    Index, Integer, LargeBinary, SmallInteger, String, Text, UniqueConstraint, func,
+    BigInteger, Boolean, Computed, DateTime, Enum, ForeignKey,
+    Integer, LargeBinary, SmallInteger, Text, UniqueConstraint, func,
 )
 from sqlalchemy.dialects.postgresql import INET, JSONB, TSVECTOR, UUID as PGUUID
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
 class Base(DeclarativeBase):

@@ -15,7 +15,7 @@ from app.db.models import (
     Conversation, ConversationMember, DirectConversationKey, InviteLink, User,
 )
 from app.services.audit import record_audit
-from app.services.authz import Access, Permission, assert_can_direct_message, resolve_access
+from app.services.authz import Access, Permission, assert_can_direct_message
 
 
 async def get_or_create_direct(db: AsyncSession, *, user: User,

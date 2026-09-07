@@ -44,3 +44,41 @@ API-enforced, over HTTP:
 Transport is TLS. This is **not** end-to-end encrypted, and nothing in the product
 claims otherwise. Attachments, push notifications and the moderation dashboard are
 scaffolded but not finished; see docs/roadmap.md.
+
+## Attachments, blocking and moderation — verified
+
+Upload requests rejected before any bytes move:
+
+- `payload.exe` declared as `image/png` — blocked extension
+- `shell.sh` declared as `image/jpeg` — blocked extension
+- `evil.svg` declared as `image/webp` — SVG is on the blocked list because it carries
+  script and renders as a document
+- `doc.pdf` declared as `application/x-sh` — MIME not on the allow-list
+- a 900 MB `huge.png` — over the size ceiling
+- a legitimate `photo.jpg` is accepted
+
+Filename sanitization, applied to the display name only (the storage key is random and
+never derived from user input):
+
+    '../../etc/passwd'  ->  '_._etc_passwd'
+    'a/b\c.png'         ->  'a_b_c.png'
+    '....//evil.png'    ->  '__evil.png'
+    'photo\x00.png'     ->  'photo.png'
+
+Validation is two-stage on purpose. The declared type gates the presigned URL; the
+observed magic bytes decide what the file actually is, after upload, before it can be
+attached to a message. A mismatch between the two is recorded — it is a strong signal of
+a deliberate attempt rather than a mislabelled file.
+
+Blocking and reporting:
+
+- after Bob blocks Alice, Alice opening a new direct chat with Bob returns 404
+- self-block returns 422
+- reporting a message the caller cannot see returns 404, so the endpoint is not an
+  oracle for which message ids exist
+- three identical reports of the same user return 200 each and store exactly one row —
+  a repeat neither errors nor confirms that an earlier report exists
+- `/admin/reports` and `/admin/users/suspend` return 403 for an ordinary user
+- suspension revokes every session immediately rather than waiting for token expiry
+- a moderator cannot suspend a peer or a superior, so one compromised admin account
+  cannot disable the others

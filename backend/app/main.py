@@ -14,7 +14,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api.v1 import auth, conversations
+from app.api.v1 import auth, conversations, moderation, uploads
 from app.core.config import get_settings
 from app.core.logging import configure_logging, get_logger, request_id_ctx
 from app.core.redis import close_redis, get_redis
@@ -92,4 +92,6 @@ async def health():
 
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(conversations.router, prefix="/api/v1")
+app.include_router(uploads.router, prefix="/api/v1")
+app.include_router(moderation.router, prefix="/api/v1")
 app.include_router(ws_router.router)
